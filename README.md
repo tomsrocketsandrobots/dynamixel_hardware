@@ -26,17 +26,44 @@ $ . install/setup.bash
 ### Configure Dynamixel motor parameters
 
 Update the `usb_port`, `baud_rate`, and `joint_ids` parameters on [`open_manipulator_x_description/urdf/open_manipulator_x.ros2_control.xacro`](https://github.com/youtalk/dynamixel_hardware_examples/blob/main/open_manipulator_x_description/urdf/open_manipulator_x.ros2_control.xacro#L9-L12) to correctly communicate with Dynamixel motors.
-The `use_dummy` parameter is required if you don't have a real OpenManipulator-X.
+The `use_dummy` parameter is required if you don't have a real harware.
 
 Note that `joint_ids` parameters must be splited by `,`.
+
+You can use offset and gear_ration to modify the joint state and the desired state to calibrate the motor to your current robot.
+
+If you don't have real hardware, set the `use_dummy` parameter to true.
+
+Note that `joint_ids` parameters must be splited by `,`.
+
+You can use the `offset` and `gear_ratio` parameters to adjust the joint state and the desired state for calibrating the motor to your robot. The formulas are as follows:
+
+
+```command_position = (command.position  * gear_ratio) + offset```
+
+```state_position = (position - offset) / gear_ratio```
 
 ```xml
 <hardware>
   <plugin>dynamixel_hardware/DynamixelHardware</plugin>
   <param name="usb_port">/dev/ttyUSB0</param>
   <param name="baud_rate">1000000</param>
-  <!-- <param name="use_dummy">true</param> -->
+  <param name="use_dummy">false</param>
+  <param name="enable_torque">true</param>
 </hardware>
+<joint name="gripper_motor_joint">
+  <param name="id">1</param>
+  <param name="offset">0.0</param>
+  <param name="gear_ratio">1.0</param>
+
+  <command_interface name="position"/>
+  <command_interface name="velocity"/>
+
+  <state_interface name="position"/>
+  <state_interface name="velocity"/>
+  <state_interface name="effort"/>
+</joint>
+
 ```
 
 - Terminal 1
