@@ -45,6 +45,8 @@ struct Joint
   JointValue state{};
   JointValue command{};
   JointValue prev_command{};
+  double offset{0.0};
+  double gear_ratio{0.0};
 };
 
 enum class ControlMode
@@ -100,10 +102,13 @@ private:
   std::map<const char * const, const ControlItem *> control_items_;
   std::vector<Joint> joints_;
   std::vector<uint8_t> joint_ids_;
+
   bool torque_enabled_{false};
   ControlMode control_mode_{ControlMode::Position};
   bool mode_changed_{false};
   bool use_dummy_{false};
+  bool activated_{false};
+  bool enable_torque_{true};
 };
 }  // namespace dynamixel_hardware
 

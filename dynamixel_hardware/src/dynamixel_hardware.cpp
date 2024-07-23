@@ -60,6 +60,8 @@ CallbackReturn DynamixelHardware::on_init(const hardware_interface::HardwareInfo
 
   for (uint i = 0; i < info_.joints.size(); i++) {
     joint_ids_[i] = std::stoi(info_.joints[i].parameters.at("id"));
+    joints_[i].offset  = std::stod(info_.joints[i].parameters.at("offset"));
+    joints_[i].gear_ratio  = std::stod(info_.joints[i].parameters.at("gear_ratio"));
     joints_[i].state.position = std::numeric_limits<double>::quiet_NaN();
     joints_[i].state.velocity = std::numeric_limits<double>::quiet_NaN();
     joints_[i].state.effort = std::numeric_limits<double>::quiet_NaN();
@@ -79,6 +81,16 @@ CallbackReturn DynamixelHardware::on_init(const hardware_interface::HardwareInfo
     use_dummy_ = true;
     RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "dummy mode");
     return CallbackReturn::SUCCESS;
+  }
+
+  if (
+    info_.hardware_parameters.find("enable_torque") != info_.hardware_parameters.end() &&
+    info_.hardware_parameters.at("enable_torque") == "false")
+  {
+    enable_torque_ = false;
+    RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "Torque is disabled");
+  } else {
+    enable_torque_ = true;
   }
 
   auto usb_port = info_.hardware_parameters.at("usb_port");
@@ -104,7 +116,7 @@ CallbackReturn DynamixelHardware::on_init(const hardware_interface::HardwareInfo
   enable_torque(false);
   set_control_mode(ControlMode::Position, true);
   set_joint_params();
-  enable_torque(true);
+  enable_torque(enable_torque_);
 
   const ControlItem * goal_position =
     dynamixel_workbench_.getItemInfo(joint_ids_[0], kGoalPositionItem);
@@ -229,12 +241,16 @@ CallbackReturn DynamixelHardware::on_activate(const rclcpp_lifecycle::State & /*
   reset_command();
   write(rclcpp::Time{}, rclcpp::Duration(0, 0));
 
+  activated_ = true;
+
   return CallbackReturn::SUCCESS;
 }
 
 CallbackReturn DynamixelHardware::on_deactivate(
   const rclcpp_lifecycle::State & /* previous_state */)
 {
+  activated_ = false;
+
   RCLCPP_DEBUG(rclcpp::get_logger(kDynamixelHardware), "stop");
   return CallbackReturn::SUCCESS;
 }
@@ -243,6 +259,11 @@ return_type DynamixelHardware::read(
   const rclcpp::Time & /* time */,
   const rclcpp::Duration & /* period */)
 {
+  if(!activated_)
+  {
+    return return_type::OK;
+  }
+
   if (use_dummy_) {
     return return_type::OK;
   }
@@ -286,18 +307,25 @@ return_type DynamixelHardware::read(
   }
 
   for (uint i = 0; i < ids.size(); i++) {
-    joints_[i].state.position = dynamixel_workbench_.convertValue2Radian(ids[i], positions[i]);
-    joints_[i].state.velocity = dynamixel_workbench_.convertValue2Velocity(ids[i], velocities[i]);
+
+    joints_[i].state.position = (dynamixel_workbench_.convertValue2Radian(ids[i], positions[i]) - joints_[i].offset) / joints_[i].gear_ratio;
+    // std::cout << joints_[i].state.position << " = (" << dynamixel_workbench_.convertValue2Radian(ids[i], positions[i]) << " - " << joints_[i].offset << ") / " << joints_[i].gear_ratio << " id:" << ids[i] << " positions[i]:"<< positions[i] << std::endl;
+    joints_[i].state.velocity = dynamixel_workbench_.convertValue2Velocity(ids[i], velocities[i]) / joints_[i].gear_ratio;
     joints_[i].state.effort = dynamixel_workbench_.convertValue2Current(currents[i]);
   }
-
   return return_type::OK;
 }
+
 
 return_type DynamixelHardware::write(
   const rclcpp::Time & /* time */,
   const rclcpp::Duration & /* period */)
 {
+  if(!activated_)
+  {
+    return return_type::OK;
+  }
+
   if (use_dummy_) {
     for (auto & joint : joints_) {
       joint.prev_command.position = joint.command.position;
@@ -452,6 +480,7 @@ return_type DynamixelHardware::set_control_mode(const ControlMode & mode, const 
 return_type DynamixelHardware::reset_command()
 {
   for (uint i = 0; i < joints_.size(); i++) {
+
     joints_[i].command.position = joints_[i].state.position;
     joints_[i].command.velocity = 0.0;
     joints_[i].command.effort = 0.0;
@@ -472,8 +501,9 @@ CallbackReturn DynamixelHardware::set_joint_positions()
   std::copy(joint_ids_.begin(), joint_ids_.end(), ids.begin());
   for (uint i = 0; i < ids.size(); i++) {
     joints_[i].prev_command.position = joints_[i].command.position;
-    commands[i] = dynamixel_workbench_.convertRadian2Value(
-      ids[i], static_cast<float>(joints_[i].command.position));
+    float command_position = (joints_[i].command.position  * joints_[i].gear_ratio) + joints_[i].offset;
+    //std::cout << command_position << " = (" << joints_[i].command.position << " * " << joints_[i].gear_ratio << ") + " <<  joints_[i].offset << std::endl;
+    commands[i] = dynamixel_workbench_.convertRadian2Value(ids[i], command_position);
   }
   if (!dynamixel_workbench_.syncWrite(
       kGoalPositionIndex, ids.data(), ids.size(), commands.data(), 1, &log))
@@ -492,8 +522,8 @@ CallbackReturn DynamixelHardware::set_joint_velocities()
   std::copy(joint_ids_.begin(), joint_ids_.end(), ids.begin());
   for (uint i = 0; i < ids.size(); i++) {
     joints_[i].prev_command.velocity = joints_[i].command.velocity;
-    commands[i] = dynamixel_workbench_.convertVelocity2Value(
-      ids[i], static_cast<float>(joints_[i].command.velocity));
+    float command_velocity = joints_[i].command.velocity * joints_[i].gear_ratio;
+    commands[i] = dynamixel_workbench_.convertVelocity2Value(ids[i], command_velocity);
   }
   if (!dynamixel_workbench_.syncWrite(
       kGoalVelocityIndex, ids.data(), ids.size(), commands.data(), 1, &log))
