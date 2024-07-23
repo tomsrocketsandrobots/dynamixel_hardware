@@ -21,23 +21,17 @@ $ colcon build --symlink-install --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 $ . install/setup.bash
 ```
 
-## Demo with real ROBOTIS OpenManipulator-X
+## Demo with real ROBOTIS Hardware
 
 ### Configure Dynamixel motor parameters
 
-Update the `usb_port`, `baud_rate`, and `joint_ids` parameters on [`open_manipulator_x_description/urdf/open_manipulator_x.ros2_control.xacro`](https://github.com/youtalk/dynamixel_hardware_examples/blob/main/open_manipulator_x_description/urdf/open_manipulator_x.ros2_control.xacro#L9-L12) to correctly communicate with Dynamixel motors.
-The `use_dummy` parameter is required if you don't have a real harware.
-
-Note that `joint_ids` parameters must be splited by `,`.
-
-You can use offset and gear_ration to modify the joint state and the desired state to calibrate the motor to your current robot.
+Update the `usb_port`, `baud_rate`, and `joint_ids` .  The easiest way to find there values is to use the dynamixel wizard. https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_wizard2/
 
 If you don't have real hardware, set the `use_dummy` parameter to true.
 
 Note that `joint_ids` parameters must be splited by `,`.
 
 You can use the `offset` and `gear_ratio` parameters to adjust the joint state and the desired state for calibrating the motor to your robot. The formulas are as follows:
-
 
 ```command_position = (command.position  * gear_ratio) + offset```
 
@@ -100,27 +94,3 @@ $ ros2 topic pub /velocity_controller/commands std_msgs/msg/Float64MultiArray "d
 ```
 
 [![dynamixel_control: the ros2_control implementation for any kind of ROBOTIS Dynamixel robots](https://img.youtube.com/vi/EZtBaU-otzI/0.jpg)](https://www.youtube.com/watch?v=EZtBaU-otzI)
-
-## Demo with dummy ROBOTIS OpenManipulator-X
-
-The `use_dummy` parameter is required if you use the dummy OpenManipulator-X.
-
-```diff
-diff --git a/open_manipulator_x_description/urdf/open_manipulator_x.ros2_control.xacro b/open_manipulator_x_description/urdf/open_manipulator_x.ros2_control.xacro
-index c6cdb74..111846d 100644
---- a/open_manipulator_x_description/urdf/open_manipulator_x.ros2_control.xacro
-+++ b/open_manipulator_x_description/urdf/open_manipulator_x.ros2_control.xacro
-@@ -9,7 +9,7 @@
-         <param name="usb_port">/dev/ttyUSB0</param>
-         <param name="baud_rate">1000000</param>
--        <!-- <param name="use_dummy">true</param> -->
-+        <param name="use_dummy">true</param>
-       </hardware>
-       <joint name="joint1">
-         <param name="id">11</param>
-```
-
-Then follow the same instruction of the real robot one.
-
-Note that the dummy implementation has no interpolation so far.
-If you sent a joint message, the robot would move directly to the joints without interpolation.
