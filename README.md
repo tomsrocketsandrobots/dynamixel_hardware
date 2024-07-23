@@ -10,7 +10,7 @@ It is hopefully compatible any configuration of ROBOTIS Dynamixel servos thanks 
 
 ### Configure Dynamixel motor parameters
 
-Update the `usb_port`, `baud_rate`, and `joint_ids` .  The easiest way to find there values is to use the dynamixel wizard. https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_wizard2/
+Update the `usb_port`, `baud_rate`, and joint `id`'s' .  The easiest way to find there values is to use the dynamixel wizard. https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_wizard2/
 
 If you don't have real hardware, set the `use_dummy` parameter to true.
 
