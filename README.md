@@ -31,7 +31,7 @@ If you don't have real hardware, set the `use_dummy` parameter to true.
 
 Note that `joint_ids` parameters must be splited by `,`.
 
-You can use the `offset` and `gear_ratio` parameters to adjust the joint state and the desired state for calibrating the motor to your robot. The formulas are as follows:
+You can use the `offset` (in Rads) and `gear_ratio` parameters to adjust the joint state and the desired state for calibrating the motor to your robot. The formulas are as follows:
 
 ```command_position = (command.position  * gear_ratio) + offset```
 
