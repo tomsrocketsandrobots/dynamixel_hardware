@@ -10,9 +10,9 @@ It is hopefully compatible any configuration of ROBOTIS Dynamixel servos thanks 
 
 ### Configure Dynamixel motor parameters
 
-Update the `usb_port`, `baud_rate`, and joint `id`'s' .  The easiest way to find there values is to use the dynamixel wizard. https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_wizard2/
+Update the `usb_port`, `baud_rate`, and joint `id`'s.  The easiest way to find there values is to use the dynamixel wizard. https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_wizard2/
 
-If you don't have real hardware, set the `use_dummy` parameter to true and the desired position will be mirred to current position
+If you don't have real hardware, set the `use_dummy` parameter to true and the desired position will be mirred to current position.
 
 You can use the `offset` (in Rads) and `gear_ratio` parameters to adjust the joint state and the desired state for calibrating the motor to your robot. The formulas are as follows:
 
