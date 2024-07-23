@@ -94,6 +94,8 @@ private:
 
   return_type reset_command();
 
+  void read_internal();
+
   CallbackReturn set_joint_positions();
   CallbackReturn set_joint_velocities();
   CallbackReturn set_joint_params();

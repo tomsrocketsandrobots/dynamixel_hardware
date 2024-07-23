@@ -115,8 +115,6 @@ CallbackReturn DynamixelHardware::on_init(const hardware_interface::HardwareInfo
 
   enable_torque(false);
   set_control_mode(ControlMode::Position, true);
-  set_joint_params();
-  enable_torque(enable_torque_);
 
   const ControlItem * goal_position =
     dynamixel_workbench_.getItemInfo(joint_ids_[0], kGoalPositionItem);
@@ -231,15 +229,13 @@ CallbackReturn DynamixelHardware::on_activate(const rclcpp_lifecycle::State & /*
 {
   RCLCPP_DEBUG(rclcpp::get_logger(kDynamixelHardware), "start");
   for (uint i = 0; i < joints_.size(); i++) {
-    if (use_dummy_ && std::isnan(joints_[i].state.position)) {
-      joints_[i].state.position = 0.0;
-      joints_[i].state.velocity = 0.0;
-      joints_[i].state.effort = 0.0;
-    }
+    joints_[i].state.position = 0.0;
+    joints_[i].state.velocity = 0.0;
+    joints_[i].state.effort = 0.0;
   }
-  read(rclcpp::Time{}, rclcpp::Duration(0, 0));
-  reset_command();
-  write(rclcpp::Time{}, rclcpp::Duration(0, 0));
+
+  // set_joint_params();
+  enable_torque(enable_torque_);
 
   activated_ = true;
 
@@ -267,6 +263,13 @@ return_type DynamixelHardware::read(
   if (use_dummy_) {
     return return_type::OK;
   }
+
+  read_internal();
+
+  return return_type::OK;
+}
+
+void DynamixelHardware::read_internal(){
 
   std::vector<uint8_t> ids(info_.joints.size(), 0);
   std::vector<int32_t> positions(info_.joints.size(), 0);
@@ -313,7 +316,6 @@ return_type DynamixelHardware::read(
     joints_[i].state.velocity = dynamixel_workbench_.convertValue2Velocity(ids[i], velocities[i]) / joints_[i].gear_ratio;
     joints_[i].state.effort = dynamixel_workbench_.convertValue2Current(currents[i]);
   }
-  return return_type::OK;
 }
 
 
@@ -370,7 +372,7 @@ return_type DynamixelHardware::write(
     return return_type::ERROR;
   }
 
-  // If all command values are unchanged, then remain in existing control mode and set
+  // If all command values are unchanged, then remain i n existing control mode and set
   // corresponding command values
   switch (control_mode_) {
     case ControlMode::Velocity:
@@ -479,8 +481,10 @@ return_type DynamixelHardware::set_control_mode(const ControlMode & mode, const 
 
 return_type DynamixelHardware::reset_command()
 {
-  for (uint i = 0; i < joints_.size(); i++) {
+  read_internal();
 
+  for (uint i = 0; i < joints_.size(); i++) {
+    RCLCPP_INFO(rclcpp::get_logger("kDynamixelHardware"), "joints_[%d] starting position: %f", i, joints_[i].state.position);
     joints_[i].command.position = joints_[i].state.position;
     joints_[i].command.velocity = 0.0;
     joints_[i].command.effort = 0.0;
