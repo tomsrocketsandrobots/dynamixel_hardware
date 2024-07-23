@@ -6,22 +6,7 @@ The `dynamixel_hardware` package is the [`SystemInterface`](https://github.com/r
 
 It is hopefully compatible any configuration of ROBOTIS Dynamixel servos thanks to the `ros2_control`'s flexible architecture.
 
-## Set up
-
-First [install ROS 2 Rolling on Ubuntu 22.04](http://docs.ros.org/en/rolling/Installation/Ubuntu-Install-Debians.html). Then follow the instruction below.
-
-```shell
-$ source /opt/ros/rolling/setup.bash
-$ mkdir -p ~/ros/rolling && cd ~/ros/rolling/src
-$ git clone https://github.com/youtalk/dynamixel_hardware.git
-$ git clone https://github.com/youtalk/dynamixel_hardware_examples.git
-$ cd -
-$ rosdep install --from-paths src --ignore-src -r -y
-$ colcon build --symlink-install --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-$ . install/setup.bash
-```
-
-## Demo with real ROBOTIS Hardware
+## ROBOTIS Hardware
 
 ### Configure Dynamixel motor parameters
 
