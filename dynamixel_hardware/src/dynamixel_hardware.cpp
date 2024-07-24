@@ -48,6 +48,22 @@ constexpr const char * const kExtraJointParameters[] = {
   "Velocity_I_Gain",
 };
 
+ControlMode DynamixelHardware::stringToControlMode(const std::string& mode_str)
+{
+  if (mode_str == "Position") return ControlMode::Position;
+  if (mode_str == "Velocity") return ControlMode::Velocity;
+  if (mode_str == "Torque") return ControlMode::Torque;
+  if (mode_str == "Current") return ControlMode::Current;
+  if (mode_str == "ExtendedPosition") return ControlMode::ExtendedPosition;
+  if (mode_str == "MultiTurn") return ControlMode::MultiTurn;
+  if (mode_str == "CurrentBasedPosition") return ControlMode::CurrentBasedPosition;
+  if (mode_str == "PWM") return ControlMode::PWM;
+  if (mode_str == "None") return ControlMode::None;
+
+  RCLCPP_ERROR(rclcpp::get_logger(kDynamixelHardware), "You gave an invaid control code: %s", mode_str.c_str());
+  return ControlMode::Position;
+}
+
 CallbackReturn DynamixelHardware::on_init(const hardware_interface::HardwareInfo & info)
 {
   RCLCPP_DEBUG(rclcpp::get_logger(kDynamixelHardware), "configure");
@@ -93,6 +109,7 @@ CallbackReturn DynamixelHardware::on_init(const hardware_interface::HardwareInfo
     enable_torque_ = true;
   }
 
+  auto control_mode = stringToControlMode(info_.hardware_parameters.at("control_mode"));
   auto usb_port = info_.hardware_parameters.at("usb_port");
   auto baud_rate = std::stoi(info_.hardware_parameters.at("baud_rate"));
   const char * log = nullptr;
@@ -114,7 +131,7 @@ CallbackReturn DynamixelHardware::on_init(const hardware_interface::HardwareInfo
   }
 
   enable_torque(false);
-  set_control_mode(ControlMode::Position, true);
+  set_control_mode(control_mode);
 
   const ControlItem * goal_position =
     dynamixel_workbench_.getItemInfo(joint_ids_[0], kGoalPositionItem);
@@ -338,44 +355,7 @@ return_type DynamixelHardware::write(
     return return_type::OK;
   }
 
-  // Velocity control
-  if (std::any_of(
-      joints_.cbegin(), joints_.cend(), [](auto j) {
-        return j.command.velocity != j.prev_command.velocity;
-      }))
-  {
-    set_control_mode(ControlMode::Velocity);
-    if (mode_changed_) {
-      set_joint_params();
-    }
-    set_joint_velocities();
-    return return_type::OK;
-  }
-
-  // Position control
-  if (std::any_of(
-      joints_.cbegin(), joints_.cend(), [](auto j) {
-        return j.command.position != j.prev_command.position;
-      }))
-  {
-    set_control_mode(ControlMode::Position);
-    if (mode_changed_) {
-      set_joint_params();
-    }
-    set_joint_positions();
-    return return_type::OK;
-  }
-
-  // Effort control
-  if (std::any_of(
-      joints_.cbegin(), joints_.cend(), [](auto j) {return j.command.effort != 0.0;}))
-  {
-    RCLCPP_ERROR(rclcpp::get_logger(kDynamixelHardware), "Effort control is not implemented");
-    return return_type::ERROR;
-  }
-
-  // If all command values are unchanged, then remain in existing control mode and set
-  // corresponding command values
+  // Send the command values that coinside with the control mode
   switch (control_mode_) {
     case ControlMode::Velocity:
       set_joint_velocities();
@@ -383,6 +363,9 @@ return_type DynamixelHardware::write(
       break;
     case ControlMode::Position:
       set_joint_positions();
+      return return_type::OK;
+      break;
+    case ControlMode::None:
       return return_type::OK;
       break;
     default:  // effort, etc
@@ -396,7 +379,7 @@ return_type DynamixelHardware::enable_torque(const bool enabled)
 {
   const char * log = nullptr;
 
-  if (enabled && !torque_enabled_) {
+  if (enabled) {
     for (uint i = 0; i < info_.joints.size(); ++i) {
       if (!dynamixel_workbench_.torqueOn(joint_ids_[i], &log)) {
         RCLCPP_FATAL(rclcpp::get_logger(kDynamixelHardware), "%s", log);
@@ -405,7 +388,7 @@ return_type DynamixelHardware::enable_torque(const bool enabled)
     }
     reset_command();
     RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "Torque enabled");
-  } else if (!enabled && torque_enabled_) {
+  } else if (!enabled) {
     for (uint i = 0; i < info_.joints.size(); ++i) {
       if (!dynamixel_workbench_.torqueOff(joint_ids_[i], &log)) {
         RCLCPP_FATAL(rclcpp::get_logger(kDynamixelHardware), "%s", log);
@@ -415,70 +398,48 @@ return_type DynamixelHardware::enable_torque(const bool enabled)
     RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "Torque disabled");
   }
 
-  torque_enabled_ = enabled;
   return return_type::OK;
 }
 
-return_type DynamixelHardware::set_control_mode(const ControlMode & mode, const bool force_set)
+return_type DynamixelHardware::set_control_mode(const ControlMode & mode)
 {
   const char * log = nullptr;
-  mode_changed_ = false;
 
-  if (mode == ControlMode::Velocity && (force_set || control_mode_ != ControlMode::Velocity)) {
-    bool torque_enabled = torque_enabled_;
-    if (torque_enabled) {
-      enable_torque(false);
-    }
-
+  if (mode == ControlMode::Velocity) {
     for (uint i = 0; i < joint_ids_.size(); ++i) {
       if (!dynamixel_workbench_.setVelocityControlMode(joint_ids_[i], &log)) {
         RCLCPP_FATAL(rclcpp::get_logger(kDynamixelHardware), "%s", log);
         return return_type::ERROR;
       }
     }
+    control_mode_ = ControlMode::Velocity;
+    set_joint_params();
     RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "Velocity control");
-    if (control_mode_ != ControlMode::Velocity) {
-      mode_changed_ = true;
-      control_mode_ = ControlMode::Velocity;
-    }
-
-    if (torque_enabled) {
-      enable_torque(true);
-    }
+    
     return return_type::OK;
   }
 
-  if (mode == ControlMode::Position && (force_set || control_mode_ != ControlMode::Position)) {
-    bool torque_enabled = torque_enabled_;
-    if (torque_enabled) {
-      enable_torque(false);
-    }
-
+  if (mode == ControlMode::Position) {
     for (uint i = 0; i < joint_ids_.size(); ++i) {
       if (!dynamixel_workbench_.setPositionControlMode(joint_ids_[i], &log)) {
         RCLCPP_FATAL(rclcpp::get_logger(kDynamixelHardware), "%s", log);
         return return_type::ERROR;
       }
     }
+    control_mode_ = ControlMode::Position;
+    set_joint_params();
     RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "Position control");
-    if (control_mode_ != ControlMode::Position) {
-      mode_changed_ = true;
-      control_mode_ = ControlMode::Position;
-    }
 
-    if (torque_enabled) {
-      enable_torque(true);
-    }
     return return_type::OK;
   }
 
-  if (control_mode_ != ControlMode::Velocity && control_mode_ != ControlMode::Position) {
-    RCLCPP_FATAL(
-      rclcpp::get_logger(kDynamixelHardware), "Only position/velocity control are implemented");
-    return return_type::ERROR;
-  }
+  if (mode == ControlMode::None) {
+    RCLCPP_WARN(rclcpp::get_logger(kDynamixelHardware), "No control Mode");
+    return return_type::OK;
 
-  return return_type::OK;
+  }
+  RCLCPP_FATAL(rclcpp::get_logger(kDynamixelHardware), "Only position/velocity control are implemented");
+  return return_type::ERROR;
 }
 
 return_type DynamixelHardware::reset_command()

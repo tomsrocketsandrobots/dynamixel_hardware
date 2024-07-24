@@ -51,14 +51,15 @@ struct Joint
 
 enum class ControlMode
 {
-  Position,
-  Velocity,
-  Torque,
-  Current,
-  ExtendedPosition,
-  MultiTurn,
-  CurrentBasedPosition,
-  PWM,
+  Position = 0,
+  Velocity = 1,
+  Torque = 2,
+  Current = 3,
+  ExtendedPosition = 4,
+  MultiTurn = 5,
+  CurrentBasedPosition = 6,
+  PWM = 7,
+  None = 8,
 };
 
 class DynamixelHardware : public hardware_interface::SystemInterface
@@ -90,9 +91,11 @@ public:
 private:
   return_type enable_torque(const bool enabled);
 
-  return_type set_control_mode(const ControlMode & mode, const bool force_set = false);
+  return_type set_control_mode(const ControlMode & mode);
 
   return_type reset_command();
+
+  ControlMode stringToControlMode(const std::string& mode_str);
 
   void read_internal();
 
@@ -106,11 +109,10 @@ private:
   std::vector<uint8_t> joint_ids_;
 
   bool torque_enabled_{false};
-  ControlMode control_mode_{ControlMode::Position};
-  bool mode_changed_{false};
+  ControlMode control_mode_{ControlMode::None};
   bool use_dummy_{false};
   bool activated_{false};
-  bool enable_torque_{true};
+  bool enable_torque_{false};
 };
 }  // namespace dynamixel_hardware
 
