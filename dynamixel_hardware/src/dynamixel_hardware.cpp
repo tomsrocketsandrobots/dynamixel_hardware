@@ -68,9 +68,9 @@ CallbackReturn DynamixelHardware::on_init(const hardware_interface::HardwareInfo
     joints_[i].command.position = std::numeric_limits<double>::quiet_NaN();
     joints_[i].command.velocity = std::numeric_limits<double>::quiet_NaN();
     joints_[i].command.effort = std::numeric_limits<double>::quiet_NaN();
-    joints_[i].prev_command.position = joints_[i].command.position;
-    joints_[i].prev_command.velocity = joints_[i].command.velocity;
-    joints_[i].prev_command.effort = joints_[i].command.effort;
+    joints_[i].prev_command.position = std::numeric_limits<double>::quiet_NaN();
+    joints_[i].prev_command.velocity = std::numeric_limits<double>::quiet_NaN();
+    joints_[i].prev_command.effort = std::numeric_limits<double>::quiet_NaN();
     RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "joint_id %d: %d", i, joint_ids_[i]);
   }
 
@@ -220,6 +220,9 @@ std::vector<hardware_interface::CommandInterface> DynamixelHardware::export_comm
     command_interfaces.emplace_back(
       hardware_interface::CommandInterface(
         info_.joints[i].name, hardware_interface::HW_IF_VELOCITY, &joints_[i].command.velocity));
+    command_interfaces.emplace_back(
+      hardware_interface::CommandInterface(
+        info_.joints[i].name, hardware_interface::HW_IF_EFFORT, &joints_[i].command.effort));
   }
 
   return command_interfaces;
