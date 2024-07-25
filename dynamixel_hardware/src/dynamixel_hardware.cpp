@@ -84,9 +84,6 @@ CallbackReturn DynamixelHardware::on_init(const hardware_interface::HardwareInfo
     joints_[i].command.position = std::numeric_limits<double>::quiet_NaN();
     joints_[i].command.velocity = std::numeric_limits<double>::quiet_NaN();
     joints_[i].command.effort = std::numeric_limits<double>::quiet_NaN();
-    joints_[i].prev_command.position = std::numeric_limits<double>::quiet_NaN();
-    joints_[i].prev_command.velocity = std::numeric_limits<double>::quiet_NaN();
-    joints_[i].prev_command.effort = std::numeric_limits<double>::quiet_NaN();
     RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "joint_id %d: %d", i, joint_ids_[i]);
   }
 
@@ -349,7 +346,6 @@ return_type DynamixelHardware::write(
 
   if (use_dummy_) {
     for (auto & joint : joints_) {
-      joint.prev_command.position = joint.command.position;
       joint.state.position = joint.command.position;
     }
     return return_type::OK;
@@ -454,9 +450,6 @@ return_type DynamixelHardware::reset_command()
     joints_[i].command.position = joints_[i].state.position;
     joints_[i].command.velocity = 0.0;
     joints_[i].command.effort = 0.0;
-    joints_[i].prev_command.position = joints_[i].command.position;
-    joints_[i].prev_command.velocity = joints_[i].command.velocity;
-    joints_[i].prev_command.effort = joints_[i].command.effort;
   }
 
   return return_type::OK;
@@ -470,7 +463,6 @@ CallbackReturn DynamixelHardware::set_joint_positions()
 
   std::copy(joint_ids_.begin(), joint_ids_.end(), ids.begin());
   for (uint i = 0; i < ids.size(); i++) {
-    joints_[i].prev_command.position = joints_[i].command.position;
     float command_position = (joints_[i].command.position  * joints_[i].gear_ratio) + joints_[i].offset;
     //std::cout << command_position << " = (" << joints_[i].command.position << " * " << joints_[i].gear_ratio << ") + " <<  joints_[i].offset << std::endl;
     commands[i] = dynamixel_workbench_.convertRadian2Value(ids[i], command_position);
@@ -491,7 +483,6 @@ CallbackReturn DynamixelHardware::set_joint_velocities()
 
   std::copy(joint_ids_.begin(), joint_ids_.end(), ids.begin());
   for (uint i = 0; i < ids.size(); i++) {
-    joints_[i].prev_command.velocity = joints_[i].command.velocity;
     float command_velocity = joints_[i].command.velocity * joints_[i].gear_ratio;
     commands[i] = dynamixel_workbench_.convertVelocity2Value(ids[i], command_velocity);
   }
