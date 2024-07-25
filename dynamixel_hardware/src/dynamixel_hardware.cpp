@@ -344,7 +344,6 @@ void DynamixelHardware::read_internal(){
   for (uint i = 0; i < ids.size(); i++) {
 
     joints_[i].state.position = (dynamixel_workbench_.convertValue2Radian(ids[i], positions[i]) - joints_[i].offset) / joints_[i].gear_ratio;
-    // std::cout << joints_[i].state.position << " = (" << dynamixel_workbench_.convertValue2Radian(ids[i], positions[i]) << " - " << joints_[i].offset << ") / " << joints_[i].gear_ratio << " id:" << ids[i] << " positions[i]:"<< positions[i] << std::endl;
     joints_[i].state.velocity = dynamixel_workbench_.convertValue2Velocity(ids[i], velocities[i]) / joints_[i].gear_ratio;
     joints_[i].state.effort = dynamixel_workbench_.convertValue2Current(currents[i]);
   }
@@ -367,7 +366,14 @@ return_type DynamixelHardware::write(
     return return_type::OK;
   }
 
- std::cout << "effort: " << joints_[0].command.effort << " pos: " << joints_[0].command.position << std::endl;
+  if (joints_[0].prev_command_pos != joints_[0].command.position) {
+    RCLCPP_INFO_STREAM(rclcpp::get_logger(kDynamixelHardware), 
+                "New Desired Command: pos = " << joints_[0].command.position 
+                << " effort = " << joints_[0].command.effort 
+                << " effort command = " << dynamixel_workbench_.convertCurrent2Value(joint_ids_[0], static_cast<float>(joints_[0].command.effort)));
+  }
+  joints_[0].prev_command_pos = joints_[0].command.position;
+
 
   // Send the command values that coinside with the control mode
   switch (control_mode_) {
@@ -387,8 +393,8 @@ return_type DynamixelHardware::write(
     case ControlMode::None:
       return return_type::OK;
       break;
-    default:  // effort, etc
-      RCLCPP_ERROR(rclcpp::get_logger(kDynamixelHardware), "Control mode not implemented");
+    default:
+      RCLCPP_INFO_STREAM(rclcpp::get_logger(kDynamixelHardware), "Control mode not implemented. Mode = " << static_cast<int>(control_mode_));
       return return_type::ERROR;
       break;
   }
@@ -501,7 +507,6 @@ CallbackReturn DynamixelHardware::set_joint_positions()
   std::copy(joint_ids_.begin(), joint_ids_.end(), ids.begin());
   for (uint i = 0; i < ids.size(); i++) {
     float command_position = (joints_[i].command.position  * joints_[i].gear_ratio) + joints_[i].offset;
-    //std::cout << command_position << " = (" << joints_[i].command.position << " * " << joints_[i].gear_ratio << ") + " <<  joints_[i].offset << std::endl;
     commands[i] = dynamixel_workbench_.convertRadian2Value(ids[i], command_position);
   }
   if (!dynamixel_workbench_.syncWrite(
@@ -520,7 +525,6 @@ CallbackReturn DynamixelHardware::set_joint_velocities()
 
   std::copy(joint_ids_.begin(), joint_ids_.end(), ids.begin());
   for (uint i = 0; i < ids.size(); i++) {
-    // std::cout << "Vel = " << joints_[i].command.velocity << std::endl;
     float command_velocity = joints_[i].command.velocity * joints_[i].gear_ratio;
     commands[i] = dynamixel_workbench_.convertVelocity2Value(ids[i], command_velocity);
   }
@@ -542,8 +546,6 @@ CallbackReturn DynamixelHardware::set_joint_currents()
   for (uint i = 0; i < ids.size(); i++) {
     commands[i] = dynamixel_workbench_.convertCurrent2Value(
       ids[i], static_cast<float>(joints_[i].command.effort));
-    std::cout << commands[i] << " = " << static_cast<float>(joints_[i].command.effort) << std::endl;
-
   }
   if (!dynamixel_workbench_.syncWrite(
         kGoalCurrentIndex, ids.data(), ids.size(), commands.data(), 1, &log)) {

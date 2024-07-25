@@ -27,18 +27,19 @@ You can use the `offset` (in Rads) and `gear_ratio` parameters to adjust the joi
   <param name="baud_rate">1000000</param>
   <param name="use_dummy">false</param>
   <param name="enable_torque">true</param>
+  <param name="control_mode">CurrentBasedPosition</param><!-- Velocity Position CurrentBasedPosition -->
 </hardware>
 <joint name="gripper_motor_joint">
-  <param name="id">1</param>
-  <param name="offset">0.0</param>
-  <param name="gear_ratio">1.0</param>
+  <param name="id">${motors_params['gripper']['id']}</param>
+  <param name="offset">${motors_params['gripper']['offset']}</param>
+  <param name="gear_ratio">-2.5</param>
 
   <command_interface name="position"/>
   <command_interface name="velocity"/>
+  <command_interface name="effort"/>
 
   <state_interface name="position"/>
   <state_interface name="velocity"/>
   <state_interface name="effort"/>
 </joint>
-
 ```

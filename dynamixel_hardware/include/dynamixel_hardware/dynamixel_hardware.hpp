@@ -44,6 +44,7 @@ struct Joint
 {
   JointValue state{};
   JointValue command{};
+  double prev_command_pos{0.0};
   double offset{0.0};
   double gear_ratio{0.0};
 };
