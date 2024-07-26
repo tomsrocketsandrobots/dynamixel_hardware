@@ -73,6 +73,14 @@ CallbackReturn DynamixelHardware::on_init(const hardware_interface::HardwareInfo
     return CallbackReturn::ERROR;
   }
 
+  if (
+    info_.hardware_parameters.find("use_dummy") != info_.hardware_parameters.end() &&
+    (info_.hardware_parameters.at("use_dummy") == "true" || info_.hardware_parameters.at("use_dummy") == "True"))
+  {
+    use_dummy_ = true;
+    RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "dummy mode");
+  }
+
   joints_.resize(info_.joints.size(), Joint());
   joint_ids_.resize(info_.joints.size(), 0);
 
@@ -80,21 +88,25 @@ CallbackReturn DynamixelHardware::on_init(const hardware_interface::HardwareInfo
     joint_ids_[i] = std::stoi(info_.joints[i].parameters.at("id"));
     joints_[i].offset  = std::stod(info_.joints[i].parameters.at("offset"));
     joints_[i].gear_ratio  = std::stod(info_.joints[i].parameters.at("gear_ratio"));
-    joints_[i].state.position = std::numeric_limits<double>::quiet_NaN();
-    joints_[i].state.velocity = std::numeric_limits<double>::quiet_NaN();
-    joints_[i].state.effort = std::numeric_limits<double>::quiet_NaN();
-    joints_[i].command.position = std::numeric_limits<double>::quiet_NaN();
-    joints_[i].command.velocity = std::numeric_limits<double>::quiet_NaN();
-    joints_[i].command.effort = std::numeric_limits<double>::quiet_NaN();
+    joints_[i].state.position = 0.0;
+    joints_[i].state.velocity = 0.0;
+    joints_[i].state.effort = 0.0;
+    if(use_dummy_) {
+      joints_[i].command.position = 0.0;
+      joints_[i].command.velocity = 0.0;
+      joints_[i].command.effort = 0.0;
+    } 
+    else 
+    {
+      joints_[i].command.position = std::numeric_limits<double>::quiet_NaN();
+      joints_[i].command.velocity = std::numeric_limits<double>::quiet_NaN();
+      joints_[i].command.effort = std::numeric_limits<double>::quiet_NaN();
+    }
     RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "joint_id %d: %d", i, joint_ids_[i]);
   }
 
-  if (
-    info_.hardware_parameters.find("use_dummy") != info_.hardware_parameters.end() &&
-    info_.hardware_parameters.at("use_dummy") == "true")
-  {
-    use_dummy_ = true;
-    RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "dummy mode");
+  if (use_dummy_) {
+    // We don't want to config the hardware so return
     return CallbackReturn::SUCCESS;
   }
 
@@ -260,7 +272,7 @@ std::vector<hardware_interface::CommandInterface> DynamixelHardware::export_comm
 
 CallbackReturn DynamixelHardware::on_activate(const rclcpp_lifecycle::State & /* previous_state */)
 {
-  RCLCPP_DEBUG(rclcpp::get_logger(kDynamixelHardware), "start");
+  RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "Bren start");
   for (uint i = 0; i < joints_.size(); i++) {
     joints_[i].state.position = 0.0;
     joints_[i].state.velocity = 0.0;
@@ -402,6 +414,10 @@ return_type DynamixelHardware::write(
 
 return_type DynamixelHardware::enable_torque(const bool enabled)
 {
+  if (use_dummy_) {
+    return return_type::OK;
+  }
+
   const char * log = nullptr;
 
   if (enabled) {
