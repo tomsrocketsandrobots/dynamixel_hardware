@@ -272,7 +272,6 @@ std::vector<hardware_interface::CommandInterface> DynamixelHardware::export_comm
 
 CallbackReturn DynamixelHardware::on_activate(const rclcpp_lifecycle::State & /* previous_state */)
 {
-  RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "Bren start");
   for (uint i = 0; i < joints_.size(); i++) {
     joints_[i].state.position = 0.0;
     joints_[i].state.velocity = 0.0;
@@ -354,7 +353,10 @@ void DynamixelHardware::read_internal(){
   }
 
   for (uint i = 0; i < ids.size(); i++) {
-
+    if (print_once_) {
+      RCLCPP_INFO_STREAM(rclcpp::get_logger(kDynamixelHardware), "Raw startup position of the motor[" << i << "]: "<<  dynamixel_workbench_.convertValue2Radian(ids[i], positions[i]));
+      print_once_ = false;
+    }
     joints_[i].state.position = (dynamixel_workbench_.convertValue2Radian(ids[i], positions[i]) - joints_[i].offset) / joints_[i].gear_ratio;
     joints_[i].state.velocity = dynamixel_workbench_.convertValue2Velocity(ids[i], velocities[i]) / joints_[i].gear_ratio;
     joints_[i].state.effort = dynamixel_workbench_.convertValue2Current(currents[i]);

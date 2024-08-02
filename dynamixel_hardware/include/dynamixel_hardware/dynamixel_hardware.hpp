@@ -114,6 +114,7 @@ private:
   bool use_dummy_{false};
   bool activated_{false};
   bool enable_torque_{false};
+  bool print_once_{true};
 };
 }  // namespace dynamixel_hardware
 
