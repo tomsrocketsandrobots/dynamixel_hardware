@@ -73,9 +73,8 @@ CallbackReturn DynamixelHardware::on_init(const hardware_interface::HardwareInfo
     return CallbackReturn::ERROR;
   }
 
-  if (
-    info_.hardware_parameters.find("use_dummy") != info_.hardware_parameters.end() &&
-    (info_.hardware_parameters.at("use_dummy") == "true" || info_.hardware_parameters.at("use_dummy") == "True"))
+  if (info_.hardware_parameters.find("use_dummy") != info_.hardware_parameters.end() &&
+     (info_.hardware_parameters.at("use_dummy") == "true" || info_.hardware_parameters.at("use_dummy") == "True"))
   {
     use_dummy_ = true;
     RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "dummy mode");
@@ -110,9 +109,8 @@ CallbackReturn DynamixelHardware::on_init(const hardware_interface::HardwareInfo
     return CallbackReturn::SUCCESS;
   }
 
-  if (
-    info_.hardware_parameters.find("enable_torque") != info_.hardware_parameters.end() &&
-    info_.hardware_parameters.at("enable_torque") == "false")
+  if (info_.hardware_parameters.find("enable_torque") != info_.hardware_parameters.end() &&
+     (info_.hardware_parameters.at("enable_torque") == "false" || info_.hardware_parameters.at("enable_torque") == "False"))
   {
     enable_torque_ = false;
     RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "Torque is disabled");
