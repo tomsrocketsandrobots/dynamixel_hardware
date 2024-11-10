@@ -98,10 +98,10 @@ private:
   ControlMode stringToControlMode(const std::string& mode_str);
 
   void read_internal();
-
+  void sync_read_internal();
   CallbackReturn set_joint_positions();
   CallbackReturn set_joint_velocities();
-  CallbackReturn set_joint_currents();
+  // CallbackReturn set_joint_currents();
   CallbackReturn set_joint_params();
 
   DynamixelWorkbench dynamixel_workbench_;
@@ -114,6 +114,7 @@ private:
   bool use_dummy_{false};
   bool activated_{false};
   bool enable_torque_{false};
+  uint8_t protocol_version_{1};
   bool print_once_{true};
 };
 }  // namespace dynamixel_hardware
